@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Radar Lagu • Studio Analitik & Prediksi Spotify</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-void: #07090f;
+            --sidebar-bg: rgba(13, 17, 28, 0.9);
+            --card-glass: rgba(20, 26, 42, 0.65);
+            --border-glass: rgba(255, 255, 255, 0.08);
+            --accent-emerald: #1ed760;
+            --accent-cyan: #00d2ff;
+            --accent-violet: #9d4edd;
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+        }
+
+        body {
+            background-color: var(--bg-void);
+            color: var(--text-main);
+            font-family: 'Outfit', sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Ambient Orbs */
+        .orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(120px);
+            z-index: -1;
+            opacity: 0.25;
+            pointer-events: none;
+        }
+        .orb-1 { width: 450px; height: 450px; background: var(--accent-emerald); top: -120px; left: -80px; }
+        .orb-2 { width: 480px; height: 480px; background: var(--accent-violet); bottom: -140px; right: -80px; }
+
+        /* Layout Sidebar + Main */
+        .app-wrapper {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 265px;
+            background: var(--sidebar-bg);
+            backdrop-filter: blur(18px);
+            border-right: 1px solid var(--border-glass);
+            padding: 2rem 1.35rem;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            z-index: 100;
+        }
+
+        .main-content {
+            margin-left: 265px;
+            flex: 1;
+            padding: 2.5rem 3.25rem;
+            max-width: calc(100vw - 265px);
+        }
+
+        .content-container {
+            max-width: 1180px;
+            margin: 0 auto;
+        }
+
+        /* Brand & Equalizer */
+        .brand-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 700;
+            font-size: 1.45rem;
+            color: #fff;
+            margin-bottom: 2.4rem;
+            padding-left: 0.5rem;
+        }
+        .eq-bars { display: flex; align-items: flex-end; gap: 3px; height: 22px; }
+        .eq-bars span {
+            width: 4px; background: var(--accent-emerald); border-radius: 3px;
+            animation: bounce 1.1s infinite ease-in-out;
+        }
+        .eq-bars span:nth-child(1) { height: 10px; animation-delay: 0s; }
+        .eq-bars span:nth-child(2) { height: 20px; animation-delay: 0.2s; }
+        .eq-bars span:nth-child(3) { height: 14px; animation-delay: 0.4s; }
+        .eq-bars span:nth-child(4) { height: 18px; animation-delay: 0.15s; }
+        @keyframes bounce {
+            0%, 100% { transform: scaleY(0.5); }
+            50% { transform: scaleY(1.15); }
+        }
+
+        /* Sidebar Navigation Buttons */
+        .nav-menu-btn {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+            padding: 0.9rem 1.05rem;
+            margin-bottom: 0.6rem;
+            border: 1px solid transparent;
+            border-radius: 14px;
+            background: transparent;
+            color: var(--text-muted);
+            font-weight: 500;
+            font-size: 0.98rem;
+            text-align: left;
+            transition: all 0.25s ease;
+            cursor: pointer;
+        }
+        .nav-menu-btn:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: #fff;
+        }
+        .nav-menu-btn.active {
+            background: linear-gradient(135deg, rgba(30, 215, 96, 0.18), rgba(0, 210, 255, 0.12));
+            border-color: rgba(30, 215, 96, 0.4);
+            color: var(--accent-emerald);
+            font-weight: 600;
+        }
+
+        /* Glass Cards */
+        .glass-card {
+            background: var(--card-glass);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border-glass);
+            border-radius: 22px;
+            padding: 1.85rem 2rem;
+            box-shadow: 0 14px 36px rgba(0, 0, 0, 0.35);
+            transition: transform 0.25s ease, border-color 0.25s ease;
+        }
+        .glass-card:hover {
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        /* Stat Cards */
+        .stat-card {
+            padding: 1.65rem 1.75rem;
+        }
+        .stat-value {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 2.1rem;
+            font-weight: 700;
+            margin: 0.45rem 0;
+            background: linear-gradient(90deg, #fff, #cbd5e1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .stat-label { color: var(--text-muted); font-size: 0.88rem; font-weight: 500; }
+
+        /* Chart Switcher Pills */
+        .chart-pill {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-glass);
+            color: var(--text-muted);
+            border-radius: 999px;
+            padding: 0.5rem 1.15rem;
+            font-size: 0.88rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .chart-pill:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.1);
+        }
+        .chart-pill.active {
+            background: rgba(30, 215, 96, 0.2);
+            border-color: var(--accent-emerald);
+            color: var(--accent-emerald);
+            font-weight: 600;
+        }
+        .chart-pane { display: none; animation: fadeIn 0.3s ease; }
+        .chart-pane.active { display: block; }
+
+        /* Tab Sections */
+        .tab-section { display: none; animation: fadeIn 0.35s ease; }
+        .tab-section.active { display: block; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Inputs & Preset Chips */
+        .form-control {
+            background: rgba(10, 14, 24, 0.75);
+            border: 1px solid var(--border-glass);
+            color: #fff;
+            border-radius: 12px;
+            padding: 0.7rem 0.95rem;
+        }
+        .form-control:focus {
+            background: rgba(15, 20, 35, 0.9);
+            border-color: var(--accent-emerald);
+            box-shadow: 0 0 0 3px rgba(30, 215, 96, 0.18);
+            color: #fff;
+        }
+        .form-control::placeholder {
+            color: #64748b;
+        }
+        .helper-text { font-size: 0.78rem; color: var(--text-muted); margin-top: 5px; }
+
+        .preset-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-glass);
+            color: #e2e8f0;
+            border-radius: 999px;
+            padding: 0.45rem 1rem;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .preset-btn:hover {
+            background: rgba(30, 215, 96, 0.2);
+            border-color: var(--accent-emerald);
+            color: #fff;
+        }
+
+        .btn-emerald {
+            background: linear-gradient(135deg, #1ed760, #16a34a);
+            border: none;
+            color: #052e16;
+            font-weight: 700;
+            border-radius: 14px;
+            padding: 0.85rem 1.6rem;
+            transition: all 0.25s;
+        }
+        .btn-emerald:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(30, 215, 96, 0.35);
+            color: #052e16;
+        }
+
+        /* Chat Box */
+        .chat-box {
+            height: 380px;
+            overflow-y: auto;
+            padding: 1.25rem;
+            background: rgba(9, 12, 20, 0.7);
+            border-radius: 16px;
+            border: 1px solid var(--border-glass);
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        .msg-ai {
+            align-self: flex-start;
+            background: rgba(157, 78, 221, 0.16);
+            border: 1px solid rgba(157, 78, 221, 0.35);
+            padding: 0.9rem 1.15rem;
+            border-radius: 16px 16px 16px 4px;
+            max-width: 82%;
+            line-height: 1.6;
+        }
+        .msg-user {
+            align-self: flex-end;
+            background: rgba(30, 215, 96, 0.18);
+            border: 1px solid rgba(30, 215, 96, 0.38);
+            padding: 0.9rem 1.15rem;
+            border-radius: 16px 16px 4px 16px;
+            max-width: 80%;
+        }
+
+        /* Table */
+        .table-dark-glass {
+            --bs-table-bg: transparent;
+            --bs-table-color: var(--text-main);
+            color: var(--text-main);
+            margin-bottom: 0;
+        }
+        .table-dark-glass > :not(caption) > * > * {
+            background-color: transparent !important;
+            color: var(--text-main);
+        }
+        .table-dark-glass th {
+            border-bottom: 1px solid var(--border-glass);
+            color: var(--text-muted) !important;
+            font-weight: 600;
+            font-size: 0.84rem;
+            text-transform: uppercase;
+            padding-bottom: 0.9rem;
+        }
+        .table-dark-glass td {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            vertical-align: middle;
+            padding: 1rem 0.85rem;
+        }
+        .judul-lagu-cell {
+            color: #38bdf8 !important;
+            font-weight: 600;
+        }
+
+        @media (max-width: 992px) {
+            .sidebar { width: 100%; position: relative; height: auto; border-right: none; border-bottom: 1px solid var(--border-glass); }
+            .main-content { margin-left: 0; max-width: 100%; padding: 1.5rem; }
+            .app-wrapper { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+
+    <div class="app-wrapper">
+        <!-- SIDEBAR NAVIGASI -->
+        <aside class="sidebar">
+            <div class="brand-logo">
+                <div class="eq-bars"><span></span><span></span><span></span><span></span></div>
+                <span>Radar <span style="color: var(--accent-emerald);">Lagu</span></span>
+            </div>
+
+            <div class="text-uppercase small fw-semibold mb-2 px-2" style="color: #64748b; letter-spacing: 1px; font-size: 0.72rem;">Menu Studio</div>
+            <button class="nav-menu-btn {% if active_tab == 'dashboard' %}active{% endif %}" onclick="switchTab('dashboard', this)">
+                <span>📊</span> Dashboard Analitik
+            </button>
+            <button class="nav-menu-btn {% if active_tab == 'prediksi' %}active{% endif %}" onclick="switchTab('prediksi', this)">
+                <span>🎛️</span> Studio Prediksi ML
+            </button>
+            <button class="nav-menu-btn" onclick="switchTab('ai', this)">
+                <span>🎧</span> Asisten AI Gemini
+            </button>
+            <button class="nav-menu-btn" onclick="switchTab('riwayat', this)">
+                <span>🗂️</span> Riwayat Database
+                <span class="badge rounded-pill ms-auto" style="background: rgba(30,215,96,0.2); color: var(--accent-emerald);">{{ total_riwayat }}</span>
+            </button>
+
+            <div class="mt-auto pt-3 border-top border-secondary border-opacity-25">
+                <div class="p-3 rounded-4" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-glass);">
+                    <div class="small fw-semibold text-white mb-1">Model Aktif</div>
+                    <div class="small" style="color: var(--accent-emerald);">● Random Forest Regressor</div>
+                    <div class="small text-secondary mt-1" style="font-size: 0.75rem;">Dataset: Spotify-2000 ({{ total_dataset }} lagu)</div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- KONTEN UTAMA -->
+        <main class="main-content">
+            <div class="content-container">
+                <!-- TAB 1: DASHBOARD ANALITIK -->
+                <section id="tab-dashboard" class="tab-section {% if active_tab == 'dashboard' %}active{% endif %}">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center mb-5 gap-3">
+                        <div>
+                            <h2 class="fw-bold mb-1">Dashboard Analitik Musik</h2>
+                            <p class="text-secondary mb-0">Eksplorasi pola popularitas lagu Spotify berdasarkan 10 atribut audio.</p>
+                        </div>
+                        <button class="btn btn-emerald" onclick="document.querySelectorAll('.nav-menu-btn')[1].click()">
+                            🚀 Mulai Prediksi Lagu Baru
+                        </button>
+                    </div>
+
+                    <!-- BARIS 1: 4 KARTU STATISTIK YANG LEGA -->
+                    <div class="row g-4 mb-5">
+                        <div class="col-sm-6 col-xl-3">
+                            <div class="glass-card stat-card h-100">
+                                <div class="stat-label">Total Lagu Dataset</div>
+                                <div class="stat-value">{{ total_dataset }}</div>
+                                <div class="small text-success">Spotify-2000 Master</div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6 col-xl-3">
+                            <div class="glass-card stat-card h-100">
+                                <div class="stat-label">Rata-Rata Popularitas</div>
+                                <div class="stat-value">{{ rata_popularitas }} <span class="fs-6 text-secondary">/100</span></div>
+                                <div class="small text-info">Skala Global Spotify</div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6 col-xl-3">
+                            <div class="glass-card stat-card h-100">
+                                <div class="stat-label">Genre Paling Dominan</div>
+                                <div class="stat-value fs-3 pt-1">{{ genre_teratas }}</div>
+                                <div class="small text-warning">Frekuensi Tertinggi</div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6 col-xl-3">
+                            <div class="glass-card stat-card h-100">
+                                <div class="stat-label">Lagu Sudah Diprediksi</div>
+                                <div class="stat-value">{{ total_riwayat }}</div>
+                                <div class="small text-secondary">Tersimpan di Sistem</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- BARIS 2: VISUALISASI GRAFIK LEBAR PENUH DENGAN PILIHAN TAMPILAN -->
+                    <div class="glass-card mb-5">
+                        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+                            <div>
+                                <h4 class="fw-bold mb-1" id="judulGrafikAktif">Faktor Penentu Popularitas (Feature Importance)</h4>
+                                <p class="small text-secondary mb-0" id="deskGrafikAktif">Persentase pengaruh tiap ciri musik menurut model Random Forest</p>
+                            </div>
+                            <div class="d-flex flex-wrap gap-2">
+                                <button type="button" class="chart-pill active" onclick="switchChart('fitur', this, 'Faktor Penentu Popularitas (Feature Importance)', 'Persentase pengaruh tiap ciri musik menurut model Random Forest')">
+                                    🎯 Bobot Faktor ML
+                                </button>
+                                <button type="button" class="chart-pill" onclick="switchChart('genre', this, 'Top 10 Genre Terpopuler', 'Rata-rata skor popularitas berdasarkan kategori genre musik')">
+                                    🎸 Top 10 Genre
+                                </button>
+                                <button type="button" class="chart-pill" onclick="switchChart('tahun', this, 'Tren Skor Popularitas per Tahun Rilis', 'Pergeseran skor rata-rata lagu Spotify dari tahun ke tahun')">
+                                    📈 Tren Tahunan
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="pane-fitur" class="chart-pane active">
+                            <div style="height: 340px;">
+                                <canvas id="chartFitur"></canvas>
+                            </div>
+                        </div>
+
+                        <div id="pane-genre" class="chart-pane">
+                            <div style="height: 340px;">
+                                <canvas id="chartGenre"></canvas>
+                            </div>
+                        </div>
+
+                        <div id="pane-tahun" class="chart-pane">
+                            <div style="height: 340px;">
+                                <canvas id="chartTahun"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- BARIS 3: TABEL TOP 5 LAGU LEBAR PENUH -->
+                    <div class="glass-card">
+                        <div class="mb-4">
+                            <h4 class="fw-bold mb-1">🏆 Top 5 Lagu Skor Tertinggi di Dataset</h4>
+                            <p class="small text-secondary mb-0">Referensi lagu dengan skor popularitas puncak di dataset Spotify-2000</p>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-dark-glass">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 35%;">Judul Lagu</th>
+                                        <th style="width: 28%;">Artis</th>
+                                        <th style="width: 17%;">Genre</th>
+                                        <th style="width: 10%;">Tahun</th>
+                                        <th style="width: 10%;">Skor</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in top_lagu %}
+                                    <tr>
+                                        <td class="judul-lagu-cell">{{ item.Title }}</td>
+                                        <td class="text-white">{{ item.Artist }}</td>
+                                        <td class="text-secondary text-capitalize">{{ item.Top_Genre|default:item.Year }}</td>
+                                        <td>{{ item.Year }}</td>
+                                        <td>
+                                            <span class="badge rounded-pill px-3 py-2" style="background: rgba(30,215,96,0.2); color: var(--accent-emerald); font-size: 0.88rem;">
+                                                {{ item.Popularity }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- TAB 2: STUDIO PREDIKSI ML -->
+                <section id="tab-prediksi" class="tab-section {% if active_tab == 'prediksi' %}active{% endif %}">
+                    <div class="mb-4">
+                        <h2 class="fw-bold mb-1">Studio Prediksi Skor Popularitas</h2>
+                        <p class="text-secondary mb-0">Pilih preset gaya musik di bawah atau atur manual 10 karakteristik audio lagu.</p>
+                    </div>
+
+                    {% if hasil_prediksi is not None %}
+                    <div class="glass-card mb-4 border-success" style="background: linear-gradient(135deg, rgba(30,215,96,0.16), rgba(0,210,255,0.08));">
+                        <div class="row align-items-center">
+                            <div class="col-md-8">
+                                <span class="badge bg-success mb-2">✓ Berhasil Disimpan ke Riwayat</span>
+                                <h4 class="fw-bold mb-1">Hasil Prediksi: "{{ judul_terakhir }}"</h4>
+                                <p class="text-secondary mb-0">
+                                    {% if hasil_prediksi >= 70 %}
+                                        Potensi <strong>Sangat Tinggi (Hit / Viral)</strong> — Karakteristik audio lagu ini sangat selaras dengan tren pendengar Spotify!
+                                    {% elif hasil_prediksi >= 55 %}
+                                        Potensi <strong>Menengah ke Atas (Cukup Populer)</strong> — Lagu punya daya tarik komersial yang solid pada segmen pendengarnya.
+                                    {% else %}
+                                        Potensi <strong>Niche / Segmen Khusus</strong> — Cocok untuk pendengar spesifik, namun cenderung lebih santai dibanding lagu mainstream.
+                                    {% endif %}
+                                </p>
+                            </div>
+                            <div class="col-md-4 text-md-end mt-3 mt-md-0">
+                                <div class="small text-secondary">Prediksi Skor Popularitas</div>
+                                <div style="font-family: 'Space Grotesk', sans-serif; font-size: 3.2rem; font-weight: 800; color: var(--accent-emerald); line-height: 1;">
+                                    {{ hasil_prediksi }}<span class="fs-5 text-secondary">/100</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- PRESET CEPAT SEKALI KLIK -->
+                    <div class="glass-card mb-4">
+                        <div class="small fw-semibold text-white mb-3">⚡ Isi Otomatis Pakai Preset Gaya Musik (Sekali Klik):</div>
+                        <div class="d-flex flex-wrap gap-2">
+                            <button type="button" class="preset-btn" onclick="isiPreset('Pop Viral 2024', 2024, 122, 76, 80, -5, 14, 74, 195, 12, 6)">🔥 Pop Viral Modern</button>
+                            <button type="button" class="preset-btn" onclick="isiPreset('Pop Galau Akustik', 2023, 86, 32, 48, -10, 11, 25, 240, 82, 4)">🎸 Pop Galau Akustik</button>
+                            <button type="button" class="preset-btn" onclick="isiPreset('EDM Festival Anthem', 2022, 128, 92, 75, -4, 34, 65, 205, 5, 8)">🎧 EDM / Dance Party</button>
+                            <button type="button" class="preset-btn" onclick="isiPreset('Hip-Hop / Rap Enerjik', 2023, 98, 70, 84, -6, 16, 58, 188, 10, 28)">🎤 Hip-Hop / Rap</button>
+                            <button type="button" class="preset-btn" onclick="isiPreset('Rock Klasik 90an', 1995, 118, 85, 52, -7, 22, 50, 255, 8, 5)">⚡ Rock Klasik 90-an</button>
+                        </div>
+                    </div>
+
+                    <form method="POST" class="glass-card">
+                        {% csrf_token %}
+                        <div class="row g-4">
+                            <div class="col-md-8">
+                                <label class="form-label fw-semibold">Judul Lagu</label>
+                                <input type="text" name="judul_lagu" id="in_judul" class="form-control" placeholder="Contoh: Bertaut - Nadin Amizah" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Tahun Rilis</label>
+                                <input type="number" name="year" id="in_year" class="form-control" value="2024" min="1950" max="2030" required>
+                                <div class="helper-text">Contoh: 1990 – 2025</div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Kecepatan Ketukan (BPM)</label>
+                                <input type="number" name="bpm" id="in_bpm" class="form-control" value="115" min="40" max="250" required>
+                                <div class="helper-text">Lambat: 70–90 | Sedang: 100–120 | Cepat: >130</div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Semangat Musik / Energi (0–100)</label>
+                                <input type="number" name="energy" id="in_energy" class="form-control" value="70" min="0" max="100" required>
+                                <div class="helper-text">Semakin tinggi = musik makin menghentak</div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Enak Buat Joget / Danceability (0–100)</label>
+                                <input type="number" name="danceability" id="in_dance" class="form-control" value="72" min="0" max="100" required>
+                                <div class="helper-text">Keteraturan ritme untuk bergoyang</div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Kenyaringan Suara / Loudness (dB)</label>
+                                <input type="number" name="loudness" id="in_loud" class="form-control" value="-6" min="-60" max="5" required>
+                                <div class="helper-text">Umumnya antara -15 dB s/d -3 dB</div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Suasana Ceria / Valence (0–100)</label>
+                                <input type="number" name="valence" id="in_val" class="form-control" value="65" min="0" max="100" required>
+                                <div class="helper-text">0 = sedih/galau | 100 = sangat ceria</div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Durasi Lagu (Detik)</label>
+                                <input type="number" name="duration" id="in_dur" class="form-control" value="200" min="30" max="1200" required>
+                                <div class="helper-text">3 menit = 180 detik | 3,5 menit = 210 detik</div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Nuansa Akustik (0–100)</label>
+                                <input type="number" name="acousticness" id="in_acous" class="form-control" value="20" min="0" max="100" required>
+                                <div class="helper-text">Tinggi jika dominan gitar/piano akustik</div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Nuansa Konser Live (0–100)</label>
+                                <input type="number" name="liveness" id="in_live" class="form-control" value="15" min="0" max="100" required>
+                                <div class="helper-text">Tinggi jika ada suara penonton live</div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Banyak Lirik / Rap (0–100)</label>
+                                <input type="number" name="speechiness" id="in_speech" class="form-control" value="6" min="0" max="100" required>
+                                <div class="helper-text">Lagu biasa: 3–10 | Lagu rap: >25</div>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 pt-2 text-end">
+                            <button type="submit" class="btn btn-emerald px-4">
+                                🚀 Cek Skor Popularitas & Simpan
+                            </button>
+                        </div>
+                    </form>
+                </section>
+
+                <!-- TAB 3: ASISTEN AI GEMINI -->
+                <section id="tab-ai" class="tab-section">
+                    <div class="mb-4">
+                        <h2 class="fw-bold mb-1">Asisten AI Radar Lagu</h2>
+                        <p class="text-secondary mb-0">Konsultasi cerdas bertenaga Google Gemini seputar ciri musik dan tren Spotify.</p>
+                    </div>
+
+                    <div class="glass-card">
+                        <div class="d-flex flex-wrap gap-2 mb-4">
+                            <button class="preset-btn" onclick="kirimPertanyaanCepat('Ciri musik apa yang paling bikin lagu cepat populer di Spotify?')">✨ Ciri musik paling populer?</button>
+                            <button class="preset-btn" onclick="kirimPertanyaanCepat('Berikan contoh angka input untuk lagu pop galau Indonesia seperti lagu Nadin Amizah')">🎸 Contoh angka lagu galau Indonesia</button>
+                            <button class="preset-btn" onclick="kirimPertanyaanCepat('Apa bedanya fitur Energi dan Suasana Ceria (Valence) pada musik?')">🎵 Bedanya Energi & Suasana Ceria?</button>
+                            <button class="preset-btn" onclick="kirimPertanyaanCepat('Jelaskan secara singkat cara kerja model Random Forest di aplikasi Radar Lagu ini')">🤖 Cara kerja prediksi ML ini?</button>
+                        </div>
+
+                        <div class="chat-box mb-3" id="chatBox">
+                            <div class="msg-ai">
+                                Halo! Saya Asisten AI <strong>Radar Lagu</strong> 🎧. Bingung menentukan angka ciri-ciri lagu atau ingin tahu bagaimana sebuah lagu bisa populer di Spotify? Tanyakan apa saja di bawah!
+                            </div>
+                        </div>
+
+                        <form id="formChatAI" class="d-flex gap-2">
+                            <input type="text" id="inputPertanyaan" class="form-control" placeholder="Ketik pertanyaan seputar musik, ciri lagu, atau hasil prediksi..." required>
+                            <button type="submit" id="btnKirimAI" class="btn btn-emerald px-4">Kirim ➤</button>
+                        </form>
+                    </div>
+                </section>
+
+                <!-- TAB 4: RIWAYAT DATABASE -->
+                <section id="tab-riwayat" class="tab-section">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+                        <div>
+                            <h2 class="fw-bold mb-1">Riwayat Prediksi Lagu</h2>
+                            <p class="text-secondary mb-0">Daftar lengkap lagu yang pernah dianalisis dan tersimpan di sistem.</p>
+                        </div>
+                        <input type="text" id="cariRiwayat" class="form-control" style="max-width: 280px;" placeholder="🔍 Cari judul lagu..." onkeyup="filterTabel()">
+                    </div>
+
+                    <div class="glass-card">
+                        <div class="table-responsive">
+                            <table class="table table-dark-glass" id="tabelRiwayat">
+                                <thead>
+                                    <tr>
+                                        <th>Judul Lagu</th>
+                                        <th>Tahun</th>
+                                        <th>BPM</th>
+                                        <th>Energi</th>
+                                        <th>Dance</th>
+                                        <th>Valence</th>
+                                        <th>Skor Prediksi</th>
+                                        <th>Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in riwayat %}
+                                    <tr>
+                                        <td class="judul-lagu-cell">{{ item.judul_lagu }}</td>
+                                        <td>{{ item.year }}</td>
+                                        <td>{{ item.bpm }}</td>
+                                        <td>{{ item.energy }}</td>
+                                        <td>{{ item.danceability }}</td>
+                                        <td>{{ item.valence }}</td>
+                                        <td>
+                                            <span class="badge rounded-pill px-3 py-2" style="background: rgba(30,215,96,0.2); color: var(--accent-emerald); font-size: 0.9rem;">
+                                                {{ item.skor_popularitas }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <a href="{% url 'hapus_riwayat' item.id %}" class="btn btn-sm btn-outline-danger rounded-3" onclick="return confirm('Hapus riwayat lagu ini?')">Hapus</a>
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="8" class="text-center text-secondary py-4">Belum ada data prediksi tersimpan. Coba uji prediksi di menu Studio Prediksi ML!</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Navigasi Tab Sidebar
+        function switchTab(tabName, btnElement) {
+            document.querySelectorAll('.tab-section').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-menu-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('tab-' + tabName).classList.add('active');
+            btnElement.classList.add('active');
+        }
+
+        // Navigasi Sub-Tab Grafik di Dashboard
+        function switchChart(chartName, btnEl, judul, deskripsi) {
+            document.querySelectorAll('.chart-pane').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.chart-pill').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('pane-' + chartName).classList.add('active');
+            btnEl.classList.add('active');
+            document.getElementById('judulGrafikAktif').innerText = judul;
+            document.getElementById('deskGrafikAktif').innerText = deskripsi;
+        }
+
+        // Isi Otomatis Preset Lagu
+        function isiPreset(judul, year, bpm, energy, dance, loud, live, val, dur, acous, speech) {
+            document.getElementById('in_judul').value = judul;
+            document.getElementById('in_year').value = year;
+            document.getElementById('in_bpm').value = bpm;
+            document.getElementById('in_energy').value = energy;
+            document.getElementById('in_dance').value = dance;
+            document.getElementById('in_loud').value = loud;
+            document.getElementById('in_live').value = live;
+            document.getElementById('in_val').value = val;
+            document.getElementById('in_dur').value = dur;
+            document.getElementById('in_acous').value = acous;
+            document.getElementById('in_speech').value = speech;
+        }
+
+        // Pencarian Cepat Tabel Riwayat
+        function filterTabel() {
+            const kata = document.getElementById('cariRiwayat').value.toLowerCase();
+            const baris = document.querySelectorAll('#tabelRiwayat tbody tr');
+            baris.forEach(tr => {
+                tr.style.display = tr.innerText.toLowerCase().includes(kata) ? '' : 'none';
+            });
+        }
+
+        // Chart.js Konfigurasi
+        Chart.defaults.color = '#94a3b8';
+        Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
+
+        new Chart(document.getElementById('chartFitur'), {
+            type: 'bar',
+            data: {
+                labels: {{ fitur_labels|safe }},
+                datasets: [{
+                    label: 'Bobot Pengaruh (%)',
+                    data: {{ fitur_values|safe }},
+                    backgroundColor: 'rgba(30, 215, 96, 0.78)',
+                    borderColor: '#1ed760',
+                    borderWidth: 1,
+                    borderRadius: 8
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } }
+            }
+        });
+
+        new Chart(document.getElementById('chartGenre'), {
+            type: 'bar',
+            data: {
+                labels: {{ genre_labels|safe }},
+                datasets: [{
+                    label: 'Rata-rata Popularitas',
+                    data: {{ genre_values|safe }},
+                    backgroundColor: 'rgba(0, 210, 255, 0.78)',
+                    borderRadius: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } }
+            }
+        });
+
+        new Chart(document.getElementById('chartTahun'), {
+            type: 'line',
+            data: {
+                labels: {{ tahun_labels|safe }},
+                datasets: [{
+                    label: 'Skor Rata-rata',
+                    data: {{ tahun_values|safe }},
+                    borderColor: '#9d4edd',
+                    backgroundColor: 'rgba(157, 78, 221, 0.22)',
+                    fill: true,
+                    tension: 0.35
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } }
+            }
+        });
+
+        // Chat AI Gemini
+        const chatBox = document.getElementById('chatBox');
+        const formChat = document.getElementById('formChatAI');
+        const inputTanya = document.getElementById('inputPertanyaan');
+        const btnKirim = document.getElementById('btnKirimAI');
+
+        function kirimPertanyaanCepat(teks) {
+            inputTanya.value = teks;
+            formChat.dispatchEvent(new Event('submit'));
+        }
+
+        formChat.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const pertanyaan = inputTanya.value.trim();
+            if (!pertanyaan) return;
+
+            chatBox.innerHTML += `<div class="msg-user">${pertanyaan}</div>`;
+            inputTanya.value = '';
+            btnKirim.disabled = true;
+            btnKirim.innerText = 'Mengetik...';
+
+            const idLoading = 'load-' + Date.now();
+            chatBox.innerHTML += `<div class="msg-ai" id="${idLoading}">Sedang menganalisis pertanyaanmu...</div>`;
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            try {
+                const res = await fetch('/tanya-ai/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({ pertanyaan: pertanyaan })
+                });
+                const data = await res.json();
+                document.getElementById(idLoading).innerText = data.jawaban;
+            } catch (err) {
+                document.getElementById(idLoading).innerText = 'Gagal terhubung ke server.';
+            } finally {
+                btnKirim.disabled = false;
+                btnKirim.innerText = 'Kirim ➤';
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }
+        });
+    </script>
+</body>
+</html>
