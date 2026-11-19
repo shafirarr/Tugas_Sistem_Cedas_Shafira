@@ -163,7 +163,7 @@ def tanya_ai(request):
             )
 
             client = genai.Client(api_key=api_key)
-            daftar_model = ["gemini-3.8-flash", "gemini-3.8-flash-lite", "gemini-3.6-flash"]
+            daftar_model = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash"]
             error_terakhir = ""
 
             for nama_model in daftar_model:
